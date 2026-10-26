@@ -1,0 +1,53 @@
+# personal-AI-config — що НІКОЛИ не синхронізується.
+# .gitignore не є абсолютним захистом: див. global/scripts/audit_index.py.
+
+# Несинхронізовані локальні матеріали проєктів (клієнтські дані, сирі вивантаження)
+local/
+**/local/
+
+# Секрети та credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.kdbx
+id_rsa*
+id_ed25519*
+id_ecdsa*
+auth.json
+.credentials.json
+credentials*.json
+secrets.*
+
+# Дампи та бази даних
+*.sql
+*.sql.gz
+*.dump
+*.bak
+*.sqlite
+*.sqlite3
+*.db
+
+# Архіви та великі бінарні вивантаження
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+
+# Кеші, тимчасові та машинозалежні файли
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+*.swp
+.vscode/
+.idea/
+*.local.md
+*.local.json

@@ -1,0 +1,12 @@
+#!/bin/sh
+# Блокує коміт staged-файлів із ознаками секретів або заборонених типів.
+# Підключається install.py через локальний `git config core.hooksPath .githooks`.
+root="$(git rev-parse --show-toplevel)" || exit 1
+for py in python3 python py; do
+  # На Windows python3 може бути заглушкою Microsoft Store — перевіряємо, що інтерпретатор справжній.
+  if "$py" -c "import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)" >/dev/null 2>&1; then
+    exec "$py" "$root/global/scripts/audit_index.py" --staged
+  fi
+done
+echo "pre-commit: Python не знайдено — перевірку секретів не виконано, коміт зупинено." >&2
+exit 1
