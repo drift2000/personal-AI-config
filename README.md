@@ -21,14 +21,14 @@
 - `~/.claude/agents/personal-ai-config` → `global/agents`; `~/.claude/rules/personal-ai-config` → `global/rules`.
 - `~/.claude/settings.json` → SessionStart hook `global/hooks/private_context.py`: визначає проєкт за cwd і повідомляє шлях та перелік приватних матеріалів, skills і агентів (без вмісту). Якщо проєкт неоднозначний — контекст не підставляється.
 
-**Codex** — див. `adapters/codex/README.md` (підготовлено, не активовано).
+**Codex** — див. `adapters/codex/README.md`. Адаптер використовує symlink на спільні правила й skills, тонкі обгортки ролей та нативні hooks; його активація має окремий підготовлений план і rollback manifest.
 
 ## Захист
 
 - `.gitignore` — секрети, дампи, архіви, кеші, `local/`.
 - `.githooks/pre-commit` → `global/scripts/audit_index.py --staged`.
 - `python global/scripts/audit_index.py` — повна перевірка вже відстежуваних файлів (вміст з index, файли, що відстежуються попри .gitignore). Запускати перед push і періодично.
-- Жоден із цих засобів не є абсолютним: перед комітом переглядайте `git diff --cached`. Дані клієнтів не зберігати навіть тут (лише `local/`, якщо потрібно).
+- Жоден із цих засобів не є абсолютним: перед комітом переглядайте `git diff --cached`. Політика зберігання даних із [глобальних правил](global/AGENTS.md#1-приватність--private-by-default) діє також у `local/`.
 
 ## Розширення
 

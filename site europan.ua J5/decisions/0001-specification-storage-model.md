@@ -1,6 +1,6 @@
 # 0001 — Specification storage model
 
-Status: proposed
+Status: superseded by 0002
 Date: 2026-10-24
 
 ## Context

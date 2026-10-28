@@ -74,10 +74,42 @@ def frontmatter(path):
     return data
 
 
-def resolve(cwd, private_root):
+def canonical_git_root(cwd):
+    """Return the main checkout for a linked worktree; never infer from branch names."""
+    top = git_toplevel(cwd)
+    if top is None:
+        return None
+    out = subprocess.run(["git", "-C", str(cwd), "rev-parse", "--git-common-dir"],
+                         capture_output=True, text=True, timeout=5)
+    if out.returncode:
+        raise ValueError("Cannot determine Git worktree identity")
+    common = Path(out.stdout.strip())
+    common = (cwd / common).resolve() if not common.is_absolute() else common.resolve()
+    # Standard non-bare repositories: main checkout/.git. Otherwise fail closed.
+    if common.name != ".git" or git_toplevel(common.parent) != common.parent:
+        raise ValueError("Nonstandard Git common directory; explicit project identity required")
+    return common.parent
+
+
+def resolve(cwd, private_root, canonical=False):
     """Повертає (status, details). status: project | none | ambiguous | private-repo."""
     if is_within(cwd, private_root):
         return "private-repo", {}
+
+    # Opt-in for Codex; the existing Claude entry point retains its old resolution.
+    if canonical:
+        root = canonical_git_root(cwd)
+        if root is not None:
+            if root == private_root:
+                return "private-repo", {}
+            if root.parent != private_root.parent:
+                return "ambiguous", {"reason": "Git root is outside the configured project parent"}
+            pdir = private_root / root.name
+            if pdir.is_symlink():
+                return "ambiguous", {"reason": "Private project directory is a symlink"}
+            if pdir.is_dir():
+                return "project", {"root": root, "private": pdir}
+            return "none", {"root": root}
 
     projects = private_projects(private_root)
     sources_root = private_root.parent
@@ -151,8 +183,9 @@ def summarize(name, items):
 
 def build_message(status, details, cwd, private_root):
     head = "[private-project-memory]"
-    note_multi = ("Визначено лише за cwd сесії. Якщо робота стосується іншої папки "
-                  "multi-root workspace — уточніть проєкт у користувача, не підставляйте контекст.")
+    note_multi = ("Визначено лише за cwd сесії. Якщо задача явно вказує інший проєкт, "
+                  "перевірте його корінь і використайте відповідний приватний контекст. "
+                  "Уточнюйте проєкт лише якщо неоднозначність лишилася.")
     if status == "private-repo":
         return (f"{head} Сесія відкрита всередині приватного репозиторію ($AI_PRIVATE_ROOT = {private_root}). "
                 "Усі файли тут приватні; не копіювати їх у робочі репозиторії чи зовнішні сервіси.")
@@ -162,7 +195,8 @@ def build_message(status, details, cwd, private_root):
             msg.append(f"Причина: {details['reason']}.")
         for anc, pdir in details.get("candidates", []):
             msg.append(f"- кандидат: {anc} → {pdir}")
-        msg.append("Якщо потрібен приватний контекст — спитайте користувача, який проєкт активний.")
+        msg.append("Якщо потрібен приватний контекст — перевірте явно заданий у задачі корінь проєкту; "
+                   "спитайте користувача лише якщо проєкт досі неоднозначний.")
         msg.append(f"$AI_PRIVATE_ROOT = {private_root}")
         return "\n".join(msg)
     if status == "none":

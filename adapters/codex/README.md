@@ -1,32 +1,61 @@
-# Codex adapter (підготовлено, не активовано)
+# Codex adapter
 
-Codex використовує ту саму методологію з `global/`. Окремих копій змісту в репозиторії немає: `python adapters/install.py --codex` генерує файли Codex із `global/`.
+Цей адаптер підключає спільну методологію з `global/` до Codex без копіювання її змісту та без зміни Claude. Активація кожного профілю виконується окремо за перевіреним планом.
 
-## Що генерується
+## Архітектура
 
-| Файл | Джерело | Чому так |
-|---|---|---|
-| `~/.codex/AGENTS.md` | `global/AGENTS.md` (з підставленим `$AI_PRIVATE_ROOT`) | Codex не підтримує імпорти в AGENTS.md і читає один глобальний файл → потрібна згенерована копія. Після змін у `global/AGENTS.md` перезапустіть `install.py --codex`; `--check --codex` покаже розбіжність. |
-| `~/.codex/agents/<role>.toml` | `global/agents/<role>.md` (тіло → `developer_instructions`) | Формат custom agents Codex: `name`, `description`, `developer_instructions`. |
-| `~/.agents/skills/<name>` (junction/symlink) | `global/skills/<name>` | Codex сканує `~/.agents/skills` і `.agents/skills`; symlinks підтримуються. Той самий SKILL.md, що й для Claude. |
+| Об’єкт профілю | Джерело / призначення |
+|---|---|
+| `$CODEX_HOME/AGENTS.md` | symlink на `global/AGENTS.md`; наступна сесія бачить зміни методології одразу |
+| `$CODEX_HOME/agents/personal-ai-*.toml` | п’ять тонких TOML-обгорток. Вони посилаються на актуальні `global/agents/*.md`, не копіюють тіла ролей |
+| `~/.agents/skills/private-project-memory` | symlink на спільний skill; проєктні skills лишаються у власних `.agents/skills` |
+| `$CODEX_HOME/hooks.json` | нативні `SessionStart` і `SubagentStart`, що викликають `context_hook.py` |
 
-`~/.codex/config.toml` не змінюється ніколи. Згенеровані файли містять позначку `GENERATED`; файли без неї install.py не перезаписує.
+Hook використовує спільний resolver із `global/hooks/private_context.py`. Він передає лише шлях та короткий перелік релевантних приватних документів, не їхній вміст. Для Git worktree він визначає основний checkout; чужий клон або вкладений Git-репозиторій не отримує контекст за збігом імені.
 
-## Перевірений формат (документація Codex, станом на 2026-10)
+Глобальні ролі названі `personal-ai-*`, тому не перекривають проєктні Joomla-ролі з іншими іменами. Нативні субагенти успадковують права батьківської сесії; інструкція ролі не є технічним обмеженням sandbox.
 
-Джерела: learn.chatgpt.com/docs/agent-configuration/agents-md, …/build-skills, …/agent-configuration/subagents, …/config-file/config-reference (колишні developers.openai.com/codex/*).
+## Сумісність
 
-- AGENTS.md: глобально `~/.codex/AGENTS.override.md` або `AGENTS.md` (один файл), далі файли від кореня репо до cwd; ліміт `project_doc_max_bytes` = 32 KiB. Імпортів немає.
-- Skills: `SKILL.md` з обов'язковими `name` і `description` (інших полів frontmatter не документовано; додаткові метадані — `agents/openai.yaml`). Тому глобальні й проєктні skills тут мають лише ці два поля.
-- `[[skills.config]]` (`path`, `enabled`) — документовано для ввімкнення/вимкнення; чи реєструє він skill поза скан-каталогами — **не підтверджено**, хоча так працювало в попередньому середовищі (decision 0004 zhytlokomservis). Перевірити після активації.
-- Custom agents: `~/.codex/agents/*.toml` (особисті) або `.codex/agents/` (проєктні); поля `name`, `description`, `developer_instructions`, опційно `model`, `model_reasoning_effort`, `[[skills.config]]`, `features.*`. Старіша форма `[agents.<name>] description/config_file` у config.toml ще згадується в config reference.
-- **Read-only ролей у Codex не існує**: субагенти успадковують sandbox і approval батьківської сесії, `sandbox_mode` у файлі агента не перевизначається. Обмеження `architect`/`security`/`reviewer` — лише інструкціями (або `features.shell_tool = false`). Для гарантії — запускати сесію з `sandbox_mode = "read-only"`.
-- Назва ролі `review` попереднього середовища → тепер `reviewer` (спільна з Claude).
+Runtime installer і hooks потребують Python 3.8+; шлях із `--python` записується в hook-команду й має лишатися доступним після активації. Ізольовані regression-тести також не використовують API новіше за Python 3.8, але додатково потребують Git для worktree-сценаріїв.
 
-## Активація (лише за окремим рішенням)
+Codex adapter підтримує лише POSIX-системи (Linux/macOS): symlink-транспорт і quoting hook-команди не реалізовані для Windows. На Windows `--check`, `--prepare` та активація Codex завершуються конфліктом до запису. Це обмеження не стосується Claude adapter, який використовує junctions.
 
+## Підготовка та активація
+
+`--codex-only` ніколи не викликає Claude installer, Git hooks або змінює `config.toml`, permissions, trust, MCP чи plugin settings. За замовчуванням профіль береться з `CODEX_HOME`, інакше з `~/.codex`.
+
+```bash
+# Лише повна перевірка і список змін.
+python adapters/install.py --codex-only --check
+
+# Створити незмінний план, не торкаючись профілю.
+python adapters/install.py --codex-only --prepare local/codex-plan.json \
+  --replace AGENTS.md --replace skill:private-project-memory
+
+# Лише після перевірки плану та окремого погодження.
+python adapters/install.py --codex-only --activate local/codex-plan.json
 ```
-python adapters/install.py --check --codex   # що буде створено
-python adapters/install.py --codex           # створити
+
+`--replace` обмежений наявними `AGENTS.md` і skill `private-project-memory`. Каталог skill дозволено замінити лише тоді, коли весь його snapshot точно збігається зі спільним джерелом; змінений `SKILL.md` або будь-який додатковий файл блокують активацію. Сторонній symlink можна перепризначити тільки за явним `--replace`, без видалення його цільових даних. Symlink у батьківському шляху, `AGENTS.override.md`, дублікати skill та всі інші сторонні об’єкти також блокують активацію. План містить fingerprint початкового стану, тому застарілий або відредагований план відхиляється до першого запису.
+
+Для повністю ізольованої перевірки використовуйте `--home /tmp/…`; цей режим ігнорує поточний `CODEX_HOME` і не торкається робочого профілю.
+
+## Відкат
+
+Кожна зміна має окремий manifest у `$CODEX_HOME/.personal-ai-config/backups/<id>/manifest.json`. Він містить лише об’єкти, якими володіє адаптер; `config.toml`, auth, history, SQLite, sessions і сторонні файли не копіюються.
+
+```bash
+python adapters/install.py --codex-only --rollback \
+  "$CODEX_HOME/.personal-ai-config/backups/<id>/manifest.json"
 ```
-Тест без змін у реальному домашньому каталозі: `--home <тимчасовий каталог> --codex`.
+
+Rollback спершу перевіряє всі fingerprints установлених об’єктів і backup. Якщо користувач змінив будь-який з них, він відмовляється від часткового відновлення. Manifest після успішного відкату зберігається як запис операції.
+
+## Перевірки після активації
+
+Відкрийте **нову** Codex-сесію в основному checkout та linked worktree і перевірте: глобальні інструкції, п’ять `personal-ai-*` ролей, глобальний і проєктні skills, а також повідомлення hook без вмісту `context.md`. Trust для hooks налаштовується Codex окремо; адаптер його не змінює. Далі виконайте контрольну задачу, яка перевіряє автономну реалізацію в межах ADR і чесний статус ручної функціональної перевірки.
+
+В ізольованому профілі підтверджено Codex CLI discovery AGENTS symlink, user skill і обох hook-реєстрацій. Фактичне виконання trusted hooks, завантаження ролей у конкретному клієнті та поведінка моделі в живій задачі потребують перевірки після погодженої активації.
+
+Discovery skill і доступ shell до його шляху — різні перевірки. [Офіційна документація OpenAI](https://developers.openai.com/codex/skills/) підтверджує user-scope `$HOME/.agents/skills` і підтримку symlink-каталогів. Якщо клієнт показує skill у каталозі, але команда читання отримує `ENOENT` для `~/.agents/skills/...`, спершу перевірте filesystem sandbox поточної сесії: він може приховувати каталог, хоча профільний symlink встановлений правильно. Це не виправляється повторною активацією.

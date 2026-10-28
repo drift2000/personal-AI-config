@@ -4,7 +4,8 @@
     python adapters/install.py            # встановити/оновити адаптери Claude
     python adapters/install.py --check    # лише показати стан, нічого не змінювати
     python adapters/install.py --home DIR # використати DIR замість домашнього каталогу (тест)
-    python adapters/install.py --codex    # додатково згенерувати адаптери Codex
+    python adapters/install.py --codex-only --check  # Codex: лише перевірка
+    python adapters/install.py --codex-only --prepare PLAN.json  # без активації
 
 Ідемпотентний: правильні посилання й блоки пропускаються; чужі файли та
 посилання не змінюються (повідомляється конфлікт). Нічого не видаляє.
@@ -214,63 +215,34 @@ def install_claude(rep, home, python):
     ensure_hook(rep, claude / "settings.json", command)
 
 
-def install_codex(rep, home):
-    codex = home / ".codex"
-    print(f"Codex ({codex}, {home / '.agents'}):")
-    root = posix(REPO)
-    body = (GLOBAL / "AGENTS.md").read_text(encoding="utf-8")
-    agents_md = (f"<!-- {GENERATED} -->\n"
-                 f"<!-- AI_PRIVATE_ROOT = {root} -->\n\n"
-                 + body.replace("$AI_PRIVATE_ROOT", root))
-    write_generated(rep, codex / "AGENTS.md", agents_md)
-
-    for path in sorted((GLOBAL / "agents").glob("*.md")):
-        meta, instructions = parse_agent(path)
-        if "'''" in instructions:
-            raise ValueError(f"{path}: тіло містить ''' — несумісно з TOML literal string")
-        toml = "\n".join([
-            f"# {GENERATED}",
-            f"name = {toml_str(meta['name'])}",
-            f"description = {toml_str(meta['description'])}",
-            "developer_instructions = '''",
-            instructions.replace("$AI_PRIVATE_ROOT", root),
-            "'''",
-            "",
-        ])
-        write_generated(rep, codex / "agents" / f"{meta['name']}.toml", toml)
-
-    for skill in skills():
-        ensure_link(rep, home / ".agents" / "skills" / skill.name, skill)
-    print("  info      config.toml не змінюється. Приватні skills проєктів підключайте вручну, напр.:\n"
-          "            [[skills.config]]\n"
-          f"            path = \"{root}/<project_name>/skills/<skill>/SKILL.md\"\n"
-          "            enabled = true")
-
-
-def write_generated(rep, path, text):
-    if path.exists():
-        current = path.read_text(encoding="utf-8")
-        if GENERATED not in current:
-            rep.conflict(f"{path} існує і не згенерований install.py; не змінюю")
-            return
-        if current == text:
-            rep.ok(f"{path}")
-            return
-        rep.todo(f"{path} (оновити згенерований файл)")
-    else:
-        rep.todo(f"{path}")
-    if not rep.check:
-        write_text(path, text)
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--check", action="store_true", help="лише перевірити стан")
+    operation = parser.add_mutually_exclusive_group()
+    operation.add_argument("--check", action="store_true", help="лише перевірити стан")
+    operation.add_argument("--prepare", metavar="PLAN", help="Codex: записати план, не активувати")
+    operation.add_argument("--activate", metavar="PLAN", help="Codex: застосувати погоджений план")
+    operation.add_argument("--rollback", metavar="MANIFEST", help="Codex: відновити стан за manifest")
     parser.add_argument("--home", help="домашній каталог (за замовчуванням — поточного користувача)")
-    parser.add_argument("--codex", action="store_true", help="також згенерувати адаптери Codex")
+    parser.add_argument("--codex-only", "--codex", dest="codex", action="store_true",
+                        help="лише Codex; без операції — попередній перегляд")
+    parser.add_argument("--codex-home", help="явний Codex home; інакше CODEX_HOME або ~/.codex")
+    parser.add_argument("--replace", action="append", default=[], metavar="OBJECT",
+                        help="план міграції лише AGENTS.md або skill:private-project-memory")
     parser.add_argument("--python", default=sys.executable, help="інтерпретатор для hook")
     args = parser.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
+    sys.dont_write_bytecode = True
+    if args.codex:
+        if (args.activate or args.rollback) and (args.home or args.codex_home or args.replace):
+            parser.error("activation/rollback use paths and approvals from the reviewed plan/manifest")
+        from codex.adapter import run
+        try:
+            return run(args, REPO)
+        except (ValueError, OSError, KeyError, TypeError) as exc:
+            print("Codex adapter: " + str(exc), file=sys.stderr)
+            return 1
+    if args.prepare or args.activate or args.rollback or args.codex_home or args.replace:
+        parser.error("Codex operations require --codex-only")
 
     home = Path(args.home).resolve() if args.home else Path.home()
     rep = Report(args.check)
@@ -283,8 +255,6 @@ def main():
         print("  skip      core.hooksPath (тестовий режим --home не змінює конфіг репозиторію)")
     else:
         ensure_git_hooks(rep)
-    if args.codex:
-        install_codex(rep, home)
 
     if rep.problems:
         print(f"Проблем/відсутніх елементів: {rep.problems}")

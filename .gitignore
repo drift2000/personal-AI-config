@@ -51,3 +51,5 @@ desktop.ini
 .idea/
 *.local.md
 *.local.json
+
+.private
