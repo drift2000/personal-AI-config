@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Independent code reviewer. Use after a non-trivial change to check correctness, defects, maintainability and conformance to project conventions before it is committed or merged. Reports findings; does not modify code.
+description: Independent code reviewer. Use only for changes with data-loss, production, schema-migration or high regression risk, or when the user asks. It checks correctness, defects, maintainability and conventions. Reports findings; does not modify code.
 tools: Read, Grep, Glob, Bash
 ---
 

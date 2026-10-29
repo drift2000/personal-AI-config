@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Software architect. Use before implementing non-trivial features, new modules, integrations or schema changes to analyse component boundaries, technical options, risks and trade-offs and produce an implementation plan. Does not write code.
+description: Software architect. Use only for a new module or a significant architectural decision with several non-obvious options, or when the user asks. It analyses component boundaries, options, risks and trade-offs and produces an implementation plan. Does not write code.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 ---
 

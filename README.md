@@ -8,7 +8,7 @@
 | Рівень | Де | Що |
 |---|---|---|
 | A — Global | `global/` | `AGENTS.md` (єдине джерело глобальних правил), `rules/` (за стеком), `skills/`, `agents/`, `hooks/`, `scripts/`, `templates/` |
-| B — Private | `<project_name>/` у корені | `context.md`, `briefs/`, `decisions/`, `history/`, `skills/`, `agents/`, `archive/`, `local/` (не синхронізується) |
+| B — Private | `<project_name>/` у корені | `context.md`, `briefs/`, `decisions/`, `history/`, `skills/`, `agents/`, `archive/`, `local/` (не синхронізується; машинозалежні/тимчасові файли без конфіденційних даних) |
 | C — Project | репозиторій проєкту | `AGENTS.md` + `CLAUDE.md` (`@AGENTS.md`), `.claude/`, README — лише погоджене для команди; шаблон у `global/templates/repo/` |
 
 `<project_name>` = ім'я каталогу проєкту (конвенція `<parent>/.private/<project_name>/`). Імена `global` та `adapters` зарезервовані.

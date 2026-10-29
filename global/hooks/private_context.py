@@ -223,7 +223,7 @@ def build_message(status, details, cwd, private_root):
         msg.append("- archive/: є (читати лише на прохання)")
     skills = describe_skills(pdir)
     if skills:
-        msg.append("Приватні skills проєкту (не зареєстровані в Claude; коли задача відповідає опису — прочитайте SKILL.md і виконуйте його інструкції):")
+        msg.append("Приватні skills проєкту (не зареєстровані в інструменті; коли задача відповідає опису — прочитайте SKILL.md і виконуйте його інструкції):")
         msg.extend(skills)
     agents = describe_agents(pdir)
     if agents:

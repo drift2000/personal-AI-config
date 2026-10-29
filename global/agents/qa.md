@@ -1,6 +1,6 @@
 ---
 name: qa
-description: QA engineer. Use to verify a change against requirements, find regressions and edge cases, and write or run tests. Use for critical business logic, refactoring, or changes with regression risk.
+description: QA engineer. Use only for changes with data-loss, production, schema-migration or high regression risk, or when the user asks. It verifies requirements, regressions and edge cases, writes or runs tests.
 tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 

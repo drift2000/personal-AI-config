@@ -18,7 +18,7 @@ description: Maintain the developer's PRIVATE project knowledge base (context, b
 ├─ skills/        # приватні проєктні skills (<name>/SKILL.md); legacy: .agents/skills/
 ├─ agents/        # приватні проєктні агенти (<role>.md)
 ├─ archive/       # застаріле/завершене — без змін вмісту
-└─ local/         # НЕ синхронізується (gitignored); політика приватності діє
+└─ local/         # НЕ синхронізується (gitignored): машинозалежні/тимчасові робочі файли; без секретів і клієнтських даних
 ```
 
 Шаблони: `templates/` поруч із цим файлом.

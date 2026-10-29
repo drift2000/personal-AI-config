@@ -1,6 +1,6 @@
 ---
 name: security
-description: Security auditor. Use for changes touching authentication, authorization, user input, file uploads, payments, external APIs, secrets or dependencies, and for periodic security review of a module. Reports findings; does not modify code.
+description: Security auditor. Use for changes touching authentication, authorization, untrusted input, file uploads, payments, external APIs, secrets or dependencies, or when the user asks. Reports findings; does not modify code.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 ---
 
