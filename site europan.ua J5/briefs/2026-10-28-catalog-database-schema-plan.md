@@ -1,6 +1,6 @@
 # Cable catalogue database schema plan
 
-Status: proposed for product-owner discussion
+Status: rejected by product owner 2026-10-28 as too large for v1; superseded by `2026-10-28-catalog-database-schema-plan-v2.md` and ADR 0002
 Date: 2026-10-28
 
 ## Goal and scope

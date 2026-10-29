@@ -1,6 +1,6 @@
 # Cable catalogue database schema plan v2
 
-Status: proposed for final column review
+Status: accepted 2026-10-28 — recorded as ADR 0002
 Date: 2026-10-28
 
 ## Product-owner direction

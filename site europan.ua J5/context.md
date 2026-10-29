@@ -1,8 +1,8 @@
-# site europan.ua new — current context
+# site europan.ua J5 — current context
 
 ## Current state
-- Joomla 5 cable catalogue uses catalog → product → variant → product specifications tables.
-- A CLI importer now exists at src/cli/import-cables.php; it is dry-run by default and requires both an approved family key and --apply.
+- Joomla 5 cable catalogue follows accepted ADR 0002: nested categories → ProductFamily products → one specification row per Product + explicit-column Variants.
+- A CLI importer exists at src/cli/import-cables.php; it is dry-run by default and requires both an approved family key and --apply. It was written for the pre-0002 tables (`#__cables_catalogs` etc., see the import brief); alignment with the four-table schema is not yet done or verified.
 - Product owner limited the proposed first catalogue schema to four domain tables: nested categories, ProductFamily products, one JSON specification row per Product, and explicit-column Variants. Expanded EAV/related-entity tables are deferred until a concrete workflow requires them (2026-10-28).
 - Clean-install SQL for the accepted four-table schema is implemented and passed two consecutive executions on MariaDB 11.8.9 (2026-10-28). Existing installations still require a separately reviewed update/backfill.
 - Local dev MariaDB was explicitly rebuilt from the old empty 0.2.1 catalogue tables to the accepted four-table schema on 2026-10-28. It contains only the nested root category; Joomla schema registry remains 0.2.1. Independent read-only QA confirmed tables, indexes, root shape, and HTTP 200 for `/` and `/catalog-cables/product/4`.
@@ -13,5 +13,5 @@
 
 ## References
 - [CSV catalogue import brief](briefs/csv-catalogue-import.md)
-- [Current proposed four-table catalogue schema plan](briefs/2026-10-28-catalog-database-schema-plan-v2.md)
+- [Four-table catalogue schema plan v2 (accepted as ADR 0002)](briefs/2026-10-28-catalog-database-schema-plan-v2.md)
 - [Accepted four-table catalogue schema ADR](decisions/0002-four-table-catalogue-schema.md)
