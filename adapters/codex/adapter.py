@@ -11,17 +11,25 @@ import tempfile
 import uuid
 
 SCHEMA = 1
-ROLES = {
-    "architect": "Analyse architecture, component boundaries and technical options before implementation.",
-    "developer": "Implement and verify a scoped change within the agreed architecture.",
-    "reviewer": "Independently review correctness, architecture consistency and evidence of completion.",
-    "qa": "Verify user scenarios, edge cases and regressions with evidence.",
-    "security": "Review authorization, input handling, secrets and security-sensitive integrations.",
-}
+NAME = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 
 
 class Conflict(ValueError):
     pass
+
+
+def role_sources(repo):
+    """Roles are shared with Claude: name/description come from global/agents/*.md."""
+    roles = []
+    for source in sorted((repo / "global/agents").glob("*.md")):
+        head = re.match(r"---\n(.*?)\n---", source.read_text(encoding="utf-8"), re.S)
+        fields = dict(re.findall(r"(?m)^(name|description):\s*(.+?)\s*$", head.group(1) if head else ""))
+        if not re.fullmatch(NAME, source.stem) or fields.get("name") != source.stem or not fields.get("description"):
+            raise Conflict("Role needs frontmatter name matching file and description: " + str(source))
+        roles.append((source.stem, fields["description"], source))
+    if not roles:
+        raise Conflict("No role sources in global/agents")
+    return roles
 
 
 def absolute(path):
@@ -70,17 +78,14 @@ def specifications(repo, codex_home, user_home, python):
         raise Conflict("Codex symlink adapter currently supports POSIX only; Claude is unchanged.")
     specs = [{"id": "AGENTS.md", "path": str(codex_home / "AGENTS.md"),
               "target": str(repo / "global/AGENTS.md")}]
-    for role, description in ROLES.items():
-        source = repo / "global/agents" / (role + ".md")
-        if not source.is_file():
-            raise Conflict("Missing role source: " + str(source))
+    for role, description, source in role_sources(repo):
         # Transport instructions only; role bodies stay in global/agents/.
         instructions = (
             "AI_PRIVATE_ROOT = " + str(repo) + "\n"
-            "Before acting, read " + str(repo / "global/AGENTS.md") + " and " + str(source) + ". "
-            "Apply the current role body and the relevant project instructions/accepted ADRs. "
-            "Claude frontmatter tools do not grant Codex permissions. "
-            "If either source cannot be read, report the missing instructions before proceeding.")
+            "Global AGENTS.md is already loaded; do not re-read it. "
+            "Before acting, read the role body " + str(source) + " and apply it with the relevant "
+            "project instructions/accepted ADRs. Claude frontmatter tools do not grant Codex permissions. "
+            "If the role file cannot be read, report the missing instructions before proceeding.")
         text = ("# personal-AI-config: transport wrapper, not a copy of the role\n"
                 "name = " + json.dumps("personal-ai-" + role) + "\n"
                 "description = " + json.dumps(description) + "\n"
@@ -271,15 +276,14 @@ def validate_manifest(manifest, path, repo):
     # Recovery must remain possible even when linked source files were removed.
     allowed = {"AGENTS.md": home / "AGENTS.md", "hooks.json": home / "hooks.json",
                "receipt": home / ".personal-ai-config/receipt.json"}
-    allowed.update({"role:" + r: home / "agents" / ("personal-ai-" + r + ".toml") for r in ROLES})
     seen = set()
     for entry in manifest["entries"]:
         identifier = entry["id"]
         expected = allowed.get(identifier)
-        if identifier.startswith("skill:"):
-            name = identifier[6:]
-            if re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name):
-                expected = user / ".agents/skills" / name
+        kind, _, name = identifier.partition(":")
+        if kind in ("skill", "role") and re.fullmatch(NAME, name):
+            expected = (user / ".agents/skills" / name if kind == "skill"
+                        else home / "agents" / ("personal-ai-" + name + ".toml"))
         if (expected is None or entry["path"] != str(expected) or entry["path"] in seen
                 or desired(entry) != entry["after"]):
             raise Conflict("Unexpected rollback target")

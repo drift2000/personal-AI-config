@@ -7,7 +7,7 @@
 | Об’єкт профілю | Джерело / призначення |
 |---|---|
 | `$CODEX_HOME/AGENTS.md` | symlink на `global/AGENTS.md`; наступна сесія бачить зміни методології одразу |
-| `$CODEX_HOME/agents/personal-ai-*.toml` | п’ять тонких TOML-обгорток. Вони посилаються на актуальні `global/agents/*.md`, не копіюють тіла ролей |
+| `$CODEX_HOME/agents/personal-ai-*.toml` | по одній тонкій TOML-обгортці на кожен `global/agents/*.md` (ім’я й опис — з його frontmatter, спільного з Claude). Обгортки посилаються на актуальні тіла ролей, не копіюють їх |
 | `~/.agents/skills/private-project-memory` | symlink на спільний skill; проєктні skills лишаються у власних `.agents/skills` |
 | `$CODEX_HOME/hooks.json` | нативні `SessionStart` і `SubagentStart`, що викликають `context_hook.py` |
 

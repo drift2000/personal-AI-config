@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "adapters"))
 from codex import adapter as a
 
 
+@unittest.skipUnless(os.name == "posix", "Codex adapter is POSIX-only (Ubuntu); Windows runs Claude only")
 class AdapterTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="pac-test-")
@@ -201,6 +202,19 @@ class AdapterTests(unittest.TestCase):
         source.write_text(source.read_text() + "\nNew source rule\n")
         self.assertIn("New source rule", (self.codex / "AGENTS.md").read_text())
         self.assertIsNone(self.activate())
+
+    def test_roles_follow_shared_agent_sources(self):
+        (self.repo / "global/agents/extra.md").write_text(
+            "---\nname: extra\ndescription: Extra shared role.\n---\n\nBody.\n", encoding="utf-8")
+        ids = [e["id"] for e in self.plan()["entries"]]
+        self.assertIn("role:extra", ids)
+        manifest = self.activate()
+        self.assertTrue((self.codex / "agents/personal-ai-extra.toml").is_file())
+        a.rollback(manifest, self.repo)
+        self.assertFalse(os.path.lexists(self.codex / "agents/personal-ai-extra.toml"))
+        (self.repo / "global/agents/broken.md").write_text("no frontmatter\n", encoding="utf-8")
+        with self.assertRaises(a.Conflict):
+            self.plan()
 
     def test_profile_inside_source_repository_is_rejected(self):
         with self.assertRaises(a.Conflict):

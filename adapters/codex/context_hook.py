@@ -49,7 +49,8 @@ def main():
             message = prefix + shared.build_message(status, details, cwd, private_root)
         if len(message) > MAX_CHARS:
             message = message[:MAX_CHARS - 150] + "\nInventory truncated; inspect the selected private directory only as needed."
-        message += "\nGlobal Codex roles: personal-ai-{architect,developer,reviewer,qa,security}. Prefer relevant project specialists."
+        roles = ",".join(sorted(p.stem for p in (private_root / "global/agents").glob("*.md")))
+        message += "\nGlobal Codex roles: personal-ai-{" + roles + "}. Prefer relevant project specialists."
         warning = "personal-AI-config: project is ambiguous; no private context selected" if status == "ambiguous" else None
         respond(event, message, warning)
     except Exception as exc:
