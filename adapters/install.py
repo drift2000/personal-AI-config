@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
-"""Підключає personal-AI-config до Claude Code (і, за запитом, до Codex).
+"""Підключає personal-AI-config до обраного агента: Claude Code або Codex.
 
-    python adapters/install.py            # встановити/оновити адаптери Claude
-    python adapters/install.py --check    # лише показати стан, нічого не змінювати
-    python adapters/install.py --home DIR # використати DIR замість домашнього каталогу (тест)
-    python adapters/install.py --codex-only --check  # Codex: лише перевірка
-    python adapters/install.py --codex-only --prepare PLAN.json  # без активації
+Ціль обов'язкова; без аргументів скрипт лише показує цю довідку.
+
+    python adapters/install.py --claude               # встановити/оновити адаптер Claude
+    python adapters/install.py --claude --check       # Claude: лише показати стан
+    python adapters/install.py --claude --home DIR    # Claude: DIR замість домашнього каталогу (тест)
+    python adapters/install.py --codex --check        # Codex: лише показати стан
+
+  Встановлення Codex — у два кроки, щоб переглянути зміни до запису:
+    python adapters/install.py --codex --prepare PLAN.json   # 1. записати план встановлення
+    python adapters/install.py --codex --activate PLAN.json  # 2. встановити за переглянутим планом
+    python adapters/install.py --codex --rollback MANIFEST   # відкат встановлення (MANIFEST виводить --activate)
 
 Ідемпотентний: правильні посилання й блоки пропускаються; чужі файли та
 посилання не змінюються (повідомляється конфлікт). Нічого не видаляє.
@@ -217,20 +223,26 @@ def install_claude(rep, home, python):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    target = parser.add_mutually_exclusive_group(required=True)
+    target.add_argument("--claude", action="store_true", help="ціль: Claude Code (без операції — встановлення)")
+    target.add_argument("--codex", "--codex-only", dest="codex", action="store_true",
+                        help="ціль: Codex (без операції — попередній перегляд)")
     operation = parser.add_mutually_exclusive_group()
     operation.add_argument("--check", action="store_true", help="лише перевірити стан")
-    operation.add_argument("--prepare", metavar="PLAN", help="Codex: записати план, не активувати")
-    operation.add_argument("--activate", metavar="PLAN", help="Codex: застосувати погоджений план")
-    operation.add_argument("--rollback", metavar="MANIFEST", help="Codex: відновити стан за manifest")
+    operation.add_argument("--prepare", metavar="PLAN", help="Codex, крок 1 встановлення: записати план, нічого не змінювати")
+    operation.add_argument("--activate", metavar="PLAN", help="Codex, крок 2 встановлення: застосувати переглянутий план")
+    operation.add_argument("--rollback", metavar="MANIFEST", help="Codex: відкат встановлення за manifest")
     parser.add_argument("--home", help="домашній каталог (за замовчуванням — поточного користувача)")
-    parser.add_argument("--codex-only", "--codex", dest="codex", action="store_true",
-                        help="лише Codex; без операції — попередній перегляд")
     parser.add_argument("--codex-home", help="явний Codex home; інакше CODEX_HOME або ~/.codex")
     parser.add_argument("--replace", action="append", default=[], metavar="OBJECT",
                         help="план міграції лише AGENTS.md або skill:private-project-memory")
     parser.add_argument("--python", default=sys.executable, help="інтерпретатор для hook")
-    args = parser.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+    if len(sys.argv) == 1:
+        parser.print_help()
+        return 2
+    args = parser.parse_args()
     sys.dont_write_bytecode = True
     if args.codex:
         if (args.activate or args.rollback) and (args.home or args.codex_home or args.replace):
@@ -242,7 +254,7 @@ def main():
             print("Codex adapter: " + str(exc), file=sys.stderr)
             return 1
     if args.prepare or args.activate or args.rollback or args.codex_home or args.replace:
-        parser.error("Codex operations require --codex-only")
+        parser.error("Codex operations require --codex")
 
     home = Path(args.home).resolve() if args.home else Path.home()
     rep = Report(args.check)

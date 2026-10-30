@@ -59,7 +59,7 @@ description: Maintain the developer's PRIVATE project knowledge base (context, b
 ## Нові приватні skills та агенти
 
 - Повторюваний процес у проєкті → запропонувати skill у `<project>/skills/<name>/SKILL.md` (frontmatter лише `name` і `description` — сумісно з Claude Code і Codex). Не дублювати в ньому правила цього skill — посилатися на `private-project-memory`.
-- Універсальний процес для багатьох проєктів → запропонувати skill у `$AI_PRIVATE_ROOT/global/skills/` (після створення — запустити `adapters/install.py`).
+- Універсальний процес для багатьох проєктів → запропонувати skill у `$AI_PRIVATE_ROOT/global/skills/` (після створення — запустити `adapters/install.py` з ключем агента: `--claude` або `--codex`).
 - Приватний агент → `<project>/agents/<role>.md` у форматі агентів Claude Code. Claude Code не реєструє його автоматично: щоб використати, запустіть субагента загального призначення і передайте йому тіло файлу ролі як інструкцію.
 
 ## Чого не робити

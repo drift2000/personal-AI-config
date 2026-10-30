@@ -15,7 +15,7 @@
 
 ## Як інструменти це бачать
 
-**Claude Code** (`python adapters/install.py`):
+**Claude Code** (`python adapters/install.py --claude`):
 - `~/.claude/CLAUDE.md` — маркерний блок з `@<root>/global/AGENTS.md` (імпорт: зміни діють одразу в нових сесіях).
 - `~/.claude/skills/<skill>` → `global/skills/<skill>` (junction на Windows / symlink).
 - `~/.claude/agents/personal-ai-config` → `global/agents`; `~/.claude/rules/personal-ai-config` → `global/rules`.
@@ -32,7 +32,7 @@
 
 ## Розширення
 
-- Новий універсальний skill → `global/skills/<name>/SKILL.md` (frontmatter лише `name`, `description`) → `python adapters/install.py`.
+- Новий універсальний skill → `global/skills/<name>/SKILL.md` (frontmatter лише `name`, `description`) → `python adapters/install.py --claude`.
 - Новий проєктний приватний skill/агент → `<project>/skills/<name>/SKILL.md`, `<project>/agents/<role>.md` (hook знайде автоматично).
 - Нове правило стеку → `global/rules/<topic>.md` з `paths:` frontmatter + рядок у розділі 8 `global/AGENTS.md`.
 

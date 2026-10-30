@@ -23,18 +23,18 @@ Codex adapter підтримує лише POSIX-системи (Linux/macOS): sy
 
 ## Підготовка та активація
 
-`--codex-only` ніколи не викликає Claude installer, Git hooks або змінює `config.toml`, permissions, trust, MCP чи plugin settings. За замовчуванням профіль береться з `CODEX_HOME`, інакше з `~/.codex`.
+`--codex` ніколи не викликає Claude installer, Git hooks або змінює `config.toml`, permissions, trust, MCP чи plugin settings. За замовчуванням профіль береться з `CODEX_HOME`, інакше з `~/.codex`.
 
 ```bash
 # Лише повна перевірка і список змін.
-python adapters/install.py --codex-only --check
+python adapters/install.py --codex --check
 
 # Створити незмінний план, не торкаючись профілю.
-python adapters/install.py --codex-only --prepare local/codex-plan.json \
+python adapters/install.py --codex --prepare local/codex-plan.json \
   --replace AGENTS.md --replace skill:private-project-memory
 
 # Лише після перевірки плану та окремого погодження.
-python adapters/install.py --codex-only --activate local/codex-plan.json
+python adapters/install.py --codex --activate local/codex-plan.json
 ```
 
 `--replace` обмежений наявними `AGENTS.md` і skill `private-project-memory`. Каталог skill дозволено замінити лише тоді, коли весь його snapshot точно збігається зі спільним джерелом; змінений `SKILL.md` або будь-який додатковий файл блокують активацію. Сторонній symlink можна перепризначити тільки за явним `--replace`, без видалення його цільових даних. Symlink у батьківському шляху, `AGENTS.override.md`, дублікати skill та всі інші сторонні об’єкти також блокують активацію. План містить fingerprint початкового стану, тому застарілий або відредагований план відхиляється до першого запису.
@@ -46,7 +46,7 @@ python adapters/install.py --codex-only --activate local/codex-plan.json
 Кожна зміна має окремий manifest у `$CODEX_HOME/.personal-ai-config/backups/<id>/manifest.json`. Він містить лише об’єкти, якими володіє адаптер; `config.toml`, auth, history, SQLite, sessions і сторонні файли не копіюються.
 
 ```bash
-python adapters/install.py --codex-only --rollback \
+python adapters/install.py --codex --rollback \
   "$CODEX_HOME/.personal-ai-config/backups/<id>/manifest.json"
 ```
 
