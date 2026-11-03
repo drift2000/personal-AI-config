@@ -2,8 +2,8 @@
 
 ## Поточний стан
 
-- Ціль: перенесення магазину лабораторних реактивів/обладнання з Joomla 3 + JBZoo 2.x (PHP 5.6) на ocStore 3.0.5.1 (PHP 8.3), мульти-стор — див. `decisions/0001`, план — `briefs/2026-10-26-migration-joomla-jbzoo-to-ocstore.md`.
-- Стек: Docker (`docker/`, `run.sh`), контейнери `php_uoslab` (php_oc:8.3 + ionCube 15), `db_uoslab` (MariaDB 11), `nginx_uoslab`. ocStore у `src/`.
+- Ціль: перенесення магазину лабораторних реактивів/обладнання з Joomla 3 + JBZoo 2.x (PHP 5.6) на OpenCart 3.0.5.1 (ванільний, не ocStore; PHP 8.3), мульти-стор — див. `decisions/0001`, план — `briefs/2026-10-26-migration-joomla-jbzoo-to-ocstore.md`.
+- Стек: Docker (`docker/`, `run.sh`), контейнери `php_uoslab` (php_oc:8.3 + ionCube 15), `db_uoslab` (MariaDB 11), `nginx_uoslab`. OpenCart 3.0.5.1 у `src/`; на ocStore не переходимо (`decisions/0006`, `data/ocStore` — лише довідка).
 - Інструмент міграції: `migration/` (PHP CLI, одноразовий контейнер через `migration/run.sh`). Готово: `restore_source.sh`, команда `audit`.
 - Джерело `main` = UA-магазин: бекап Akeeba у `data/joomla`, БД `joomla_src`, префікс `uoslb_`. Звіти аудиту: `data/migration/main/audit/`.
 
@@ -37,15 +37,15 @@
 - Валюта: UAH базова (value=1), USD/EUR/GBP вимкнені для показу, курси НБУ на 27.10.2026; config_currency_auto=0. Рішення: ціни як зараз — вихідна валюта + щоденний перерахунок за курсом НБУ (модуль ще не зроблено). Бекап до зміни: `data/backups/opencart_before_uah_20261027_132352.sql.gz`.
 - Новини й сторінки (ADR `decisions/0004`): власне розширення «Новини» (`src/*/extension/module/news.*`) написано, чекає встановлення й перевірки адмінки користувачем (Extensions > Modules > Новини, увімкнути). Імпорт: `./migration/run.sh news` (109, 7 вимкнених, ключ = translit alias, стара адреса ймовірно `news/item/<alias>` — під редіректи) і `./migration/run.sh pages` (44 → oc_information, 3 вимкнені як на старому сайті: Співробітники, Співпраця та партнерство, Виставки; 7 сторінок виробників отримали ключ `-2` через колізію з виробниками → редіректи). Файли з контенту → `image/catalog/uoslab/` (PDF — `image/catalog/uoslab/download/`; у HTML шляхи від кореня `/image/...`, бо в адмінці base href = /admin/; дати новин переведено з UTC Joomla в Europe/Kyiv), спільний `migration/lib/ContentAssets.php` — використати й для описів товарів/категорій на етапі контенту. Звіти: `data/migration/main/import/{news,pages}*.csv`.
 - Відкрите (контент/тема): сторінки зверстані UIkit (`uk-grid`, `uk-width-medium-1-N`) — у Bootstrap-темі сітка не працює; навігація розділу «Про нас» (підменю) — питання теми; форми RSForm («Форма контактів», «Лінія довіри») не перенесено; «Контакти» — і сторінка, і штатна information/contact; демо-сторінки OC (About Us/Terms/Privacy/Delivery, англ. текст) не чіпали — Terms/Privacy/About прив'язані до config_checkout_id/account_id/affiliate_id.
-- Відкрите (dev): nginx `docker/nginx/default.conf` не передає `_route_` → ЧПУ не працюють (потрібен rewrite `^/(.+)$ /index.php?_route_=$1`), config_seo_url=0.
+- dev nginx: rewrite `@opencart` → `index.php?_route_=` (як `src/.htaccess`, 2026-11-02), config_seo_url=1.
 - Товари імпортовано (`./migration/run.sh products`, ~4 хв): 4746 (497 вимкнених), ціни 950 (UAH 398, EUR 477, USD 75) → `oc_product_price_currency` (вихідні) + `oc_product.price` (грн), вкладки 1762 у 1263 товарах, атрибути 28179 рядків, фільтри товарів/категорій, пов'язані 4786 (в обидва боки), 5 колізій SEO-ключів товарів (-2) → редіректи. 19 товарів без категорії (так у джерелі).
 - Коди товару (рішення користувача): «Код товару» = model як на старому сайті: артикул JBZoo `_sku` з поля ціни (коди виробників, 1504 товари: IKA 0003368000, MN 931217…) → «Кат. №»/«Модель» → CAS (реактиви) → id товару (як показував JBZoo, коли артикул не задано). MPN = коди виробника (1596). SKU = `UOS-<zoo id>` (внутрішній). Реактиви: на старому сайті код = id, у нас = CAS (погоджено раніше).
 - Відкрите: (2) розширення написано, чекає встановлення/перевірки адмінки користувачем: `price_request` (товари з price<=0: «Ціну уточнюйте» + кнопка «Уточнити» + модальна форма; лист + список «Продажі → Запити ціни»; honeypot, ліміт 5/10 хв з IP; захист cart/add) і `product_currency` (вибір валюти біля ціни у формі товару, таблиця `oc_product_price_currency`, перерахунок за курсом oc_currency); вітрину price_request перевірено на тимчасових даних; (3) щоденний перерахунок за курсом НБУ — на паузі, уточнюється; (3a) пошта в dev не працює: sendmail_path → /usr/sbin/sendmail, якого немає в образі php (mailhog не отримує листів); (4) переписування посилань/зображень в описах і вкладках (контент); (5) редіректи.
 - Відкрите: додати `image/catalog/uoslab/` у `src/.gitignore` (чекає згоди користувача).
 - Значення у видалених полях (`orphan_values.csv`): запропоновано не переносити — чекає підтвердження.
 - Валютна політика (EUR/USD з курсом чи перерахунок у UAH) — відкладено користувачем; імпорт зберігає вихідну ціну й валюту, щоб рішення можна було прийняти пізніше.
-- PHP 8.3: інсталятор ocStore 3.0.5.1 вимагає 8.1+; вітрина/адмінка 200, error.log OC порожній (фатали в php error.log 2026-10-26 15:23 — до створення storage/logs). Повторно перевірити після імпорту й встановлення модулів.
-- Окремі ціни в урізаних магазинах — невідомо.
+- PHP 8.3: інсталятор OpenCart 3.0.5.1 вимагає 8.1+; вітрина/адмінка 200, error.log OC порожній (фатали в php error.log 2026-10-26 15:23 — до створення storage/logs). Повторно перевірити після імпорту й встановлення модулів.
+- Фаза 2, EN (2026-11-02): джерело `joomla_src_en` (128 товарів, 99 опубл., 39 категорій). Модель — ADR `decisions/0005` (замінює 0001): один магазин, видимість за перекладом, `/en/`, ціна й коди спільні. Store 1 видалено, en-gb повернено (id=1, описи не копіювались). `language_optional` встановлено й перевірено користувачем. `language_url` (мова в URL, hreflang, перемикач, 301 на ключ мови) написано й встановлено в dev через БД (як install()), вітрину перевірено на тимчасових даних (прибрано); адмінку модуля користувач не бачив. EN-ключ `news` додано. Зіставлення EN-товарів: команда `match --source=en` готова (high 82, medium 26, low 1, ambiguous 3, none 16; 14 опубл. в EN вимкнені в UA), рішення в `migration/config/match.en.csv` відкладено користувачем до остаточної міграції. Перша ітерація: `translate --source=en` (лише high, 60 товарів, 22 категорії, атрибути за збігом чисел) — вітрину EN перевірено; на остаточній міграції — рішення по зіставленню, відкинуті атрибути (`attributes.csv`), російські тексти EN-сайту. Порядок: products → translate (products знищує EN-вкладки); редіректи `en.uoslab.com/*` → `/en/...` — на етапі редіректів. Деталі — `history/2026-11-02.md`.
 
 ## Посилання
 
@@ -53,4 +53,7 @@
 - `decisions/0002-migration-tool.md`
 - `decisions/0003-field-mapping-rules.md`
 - `decisions/0004-news-extension.md`
+- `decisions/0005-single-store-language-visibility.md`
+- `decisions/0006-stay-on-opencart.md`
+- `decisions/0005-single-store-language-visibility.md`
 - `briefs/2026-10-26-migration-joomla-jbzoo-to-ocstore.md`

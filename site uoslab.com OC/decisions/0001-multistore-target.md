@@ -1,6 +1,6 @@
 # 0001 — Цільова модель: мульти-стор ocStore
 
-Status: accepted
+Status: superseded by 0005
 Date: 2026-10-26
 
 ## Context
